@@ -1,119 +1,180 @@
-from tkinter import *
-import tkinter as tk
+import dearpygui.dearpygui as dpg
 import pandas as pd
+import os
 
-menu_principal = tk.Tk()
-menu_principal.title("Minhas Vendas")
-menu_principal['bg'] = "#f0f8ff"  # Mudança de cor de fundo
-menu_principal.iconbitmap("imgs/icon.ico")
+dpg.create_context()
 
-# Dimensões da janela
-largura = 1200
-altura = 800
+# Classe para verificar o estado do arquivo .xlsx
+class xlsx:
+    def xlsx_state():
+        diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+        nome_arquivo = "dados.xlsx"
+        pasta_arquivo = os.path.join(diretorio_atual, "dados")
+        os.makedirs(pasta_arquivo, exist_ok=True)
+        path = os.path.join(pasta_arquivo, nome_arquivo)
+        exists = os.path.exists(path)
 
-# Resolução do sistema
-largura_screen = menu_principal.winfo_screenwidth()
-altura_screen = menu_principal.winfo_screenheight()
+        if not exists:
+            dados = {
+                'Nome Completo': [],
+                'Produto': [],
+                'Seguradora': [],
+                'Valor': [],
+                '(%) Comissão': [],
+                'Valor de Comissão': [],
+                'Valor do Crédito': [],
+                'Data do Crédito': [],
+                'Vigência Final': [],
+                'Indicado': [],
+                'Indicador': [],
+                'Valor de Comissão do Indicador': []
+            }
 
-# Posição da janela
-posx = largura_screen / 2 - largura / 2
-posy = altura_screen / 2 - altura / 2
+            df = pd.DataFrame(dados)
+            try:
+                df.to_excel(path, sheet_name='dados', index=False)
+            except Exception as e:
+                print(f"Erro ao criar o arquivo: {e}")
 
-menu_principal.resizable(0, 0)  # Não permitir redimensionamento
+        return path
 
-# GUI
-frame = Frame(menu_principal, padx=20, pady=20, bg="#e0f7fa")  # Fundo diferente para o frame
-frame.grid(column=0, row=0, padx=20, pady=20, sticky="nsew")
+# Classe para obter o caminho do arquivo .xlsx
+class XlsxPath(xlsx):
+    def get_path():
+        return xlsx.xlsx_state()
 
-# Configurar redimensionamento das colunas e linhas
-menu_principal.grid_rowconfigure(0, weight=1)
-menu_principal.grid_columnconfigure(0, weight=1)
-frame.grid_rowconfigure(0, weight=1)
-frame.grid_columnconfigure(0, weight=1)
+# Função para formatar a data do date picker
+def format_date(date_dict):
+    day = date_dict['month_day']
+    month = date_dict['month'] + 1
+    year = date_dict['year']
 
-Label(frame, text="Bem-vindo, cadastre sua venda:", font="Poppins 15 bold", bg="#e0f7fa").grid(column=0, row=0,
-                                                                                               columnspan=2,
-                                                                                               pady=10)
-# Estilo dos Labels
+    if year < 1000: 
+        year += 1900  
 
-label_nome = Label(frame, text="Nome Completo:", bg="#e0f7fa", font="Poppins 10 bold")
-label_nome.grid(column=0, row=1, sticky=E, padx=5, pady=5)
+    return f"{day:02d}/{month:02d}/{year}"
 
-label_produto = Label(frame, text="Produto:", bg="#e0f7fa", font="Poppins 10 bold")
-label_produto.grid(column=0, row=2, sticky=E, padx=5, pady=5)
+# Função para calcular a comissão e atualizar o texto na interface
+def calculate_commission(sender, app_data, user_data):
+    try:
+        InsValue = float(dpg.get_value("input_txtInsValue"))
+        commission_pct = float(dpg.get_value("input_txtCommissionPct"))
+        cms_value = (InsValue * commission_pct) / 100
+        dpg.set_value("txtCommissionValue", f"Valor de Comissão ao Corretor: {cms_value:.2f}")
+    except ValueError:
+        dpg.set_value("txtCommissionValue", "Valor de Comissão ao Corretor: -")
 
-label_seguradora = Label(frame, text="Seguradora:", bg="#e0f7fa", font="Poppins 10 bold")
-label_seguradora.grid(column=0, row=3, sticky=E, padx=5, pady=5)
+# Função para criar as entradas de texto
+def text_inputs():
+    dpg.add_input_text(label="Nome Completo", tag="input_txtName")
+    dpg.add_input_text(label="Produto", tag="input_txtProduct")
+    dpg.add_input_text(label="Seguradora", tag="input_txtInsCompany")
 
-label_valor = Label(frame, text="Valor:", bg="#e0f7fa", font="Poppins 10 bold")
-label_valor.grid(column=0, row=4, sticky=E, padx=5, pady=5)
+    dpg.add_input_text(label="Valor", tag="input_txtInsValue", callback=calculate_commission)
+    dpg.add_input_text(label="(%) Comissão", tag="input_txtCommissionPct", callback=calculate_commission)
 
-label_comissao = Label(frame, text="Comissão (%):", bg="#e0f7fa", font="Poppins 10 bold")
-label_comissao.grid(column=0, row=5, sticky=E, padx=5, pady=5)
+    dpg.add_text("", tag="txtCommissionValue")
+    dpg.add_input_text(label="Valor do Crédito", tag="input_txtCreditValue")
+    dpg.add_text("Data do Crédito")
+    dpg.add_date_picker(label="Data do Crédito", tag="input_txtCreditDate")
+    dpg.add_text("Vigência Final")
+    dpg.add_date_picker(label="Vigência Final", tag="input_txtEndDate")
+    dpg.add_checkbox(label="Indicado?", tag="input_txtIndicated")
+    dpg.add_input_text(label="Indicador", tag="input_txtIndicator")
+    #dpg.add_text(f"Valor de Comissão do Indicador: ", tag="input_txtIndicatorCommissionValue")
 
-label_valorComissao = Label(frame, text="Valor da Comissão:", bg="#e0f7fa", font="Poppins 10 bold")
-label_valorComissao.grid(column=0, row=6, sticky=E, padx=5, pady=5)
+# Função de callback do botão salvar
+def button_callback():
+    name = dpg.get_value("input_txtName")
+    product = dpg.get_value("input_txtProduct")
+    InsCompany = dpg.get_value("input_txtInsCompany")
+    InsValue = dpg.get_value("input_txtInsValue")
+    commission_pct = dpg.get_value("input_txtCommissionPct")
+    cms_value = dpg.get_value("txtCommissionValue").split(": ")[-1]
+    credit_value = dpg.get_value("input_txtCreditValue")
+    credit_date_dict = dpg.get_value("input_txtCreditDate")
+    end_date_dict = dpg.get_value("input_txtEndDate")
+    credit_date = format_date(credit_date_dict)
+    end_date = format_date(end_date_dict)
+    indicated = dpg.get_value("input_txtIndicated") 
+    indicator = dpg.get_value("input_txtIndicator")
+    indicator_commission_value = dpg.get_value("input_txtIndicatorCommissionValue")
+    
+    fields = {
+        "Nome Completo": name,
+        "Produto": product,
+        "Seguradora": InsCompany,
+        "Valor": InsValue,
+        "(%) Comissão": commission_pct,
+        "Valor do Crédito": credit_value,
+    }
 
-label_valorCredito = Label(frame, text="Valor de Crédito:", bg="#e0f7fa", font="Poppins 10 bold")
-label_valorCredito.grid(column=0, row=7, sticky=E, padx=5, pady=5)
+    empty_fields = [key for key, value in fields.items() if not value]
 
-label_dataCredito = Label(frame, text="Data de Crédito:", bg="#e0f7fa", font="Poppins 10 bold")
-label_dataCredito.grid(column=0, row=8, sticky=E, padx=5, pady=5)
+    if empty_fields:
+        empty_fields_str = ", \n".join(empty_fields)
+        with dpg.window(label="Aviso", pos=(200, 100), no_close=False, popup=True, horizontal_scrollbar=True, max_size=[300,200]):
+            dpg.add_text(f"Os seguintes campos estão vazios: \n{empty_fields_str}")
+        return
 
-label_VigenciaFinal = Label(frame, text="Vigência Final:", bg="#e0f7fa", font="Poppins 10 bold")
-label_VigenciaFinal.grid(column=0, row=9, sticky=E, padx=5, pady=5)
+    data_dictionary = {  
+        'Nome Completo': [name],
+        'Produto': [product],
+        'Seguradora': [InsCompany],
+        'Valor': [InsValue],
+        '(%) Comissão': [commission_pct],
+        'Valor de Comissão': [cms_value],
+        'Valor do Crédito': [credit_value],
+        'Data do Crédito': [credit_date],
+        'Vigência Final': [end_date],
+        'Indicado': [indicated],
+        'Indicador': [indicator],
+        'Valor de Comissão do Indicador': [indicator_commission_value]
+    }
+    
+    tabel = pd.DataFrame.from_dict(data_dictionary)
+    xlsx_path = XlsxPath.get_path()
 
-label_Indicador = Label(frame, text="Indicador:", bg="#e0f7fa", font="Poppins 10 bold")
-label_Indicador.grid(column=0, row=10, sticky=E, padx=5, pady=5)
+    if os.path.exists(xlsx_path):
+        existing_df = pd.read_excel(xlsx_path)
+        if any(existing_df['Nome Completo'] == name):
+            with dpg.window(label="Aviso", pos=(200, 100), no_close=False, popup=True, horizontal_scrollbar=True, autosize=True, max_size=[300,50]):
+                dpg.add_text("Venda já cadastrada")
+            return  
+        else:
+            updated_df = pd.concat([existing_df, tabel], ignore_index=True)
+    else:
+        updated_df = tabel
+    
+    updated_df.to_excel(xlsx_path, index=False)
 
-label_valorComissaoIndicador = Label(frame, text="Valor da Comissão para o indicador:", bg="#e0f7fa",
-                                     font="Poppins 10 bold")
-label_valorComissaoIndicador.grid(column=0, row=11, sticky=E, padx=5, pady=5)
+    with dpg.window(label="Mensagem", pos=(50, 200), no_close=False):
+        dpg.add_text(f'Cliente "{name}" cadastrado com sucesso!')
+        dpg.add_text(f"Dados salvos com sucesso em {xlsx_path}")
 
-# Mensagem de rodapé
-Label(frame, text="Desenvolvido por [Hugo Rios]", bg="#e0f7fa", font="Poppins 8 italic").grid(column=0, row=13,
-                                                                                              columnspan=2,
-                                                                                              pady=10)
+# Configuração da interface
+with dpg.window(tag="App"):
+    xlsx.xlsx_state()
+    dpg.add_text('Bem vindo ao Cadastro de Vendas, Corretor.')
+    text_inputs()
+    dpg.add_button(label="Salvar", callback=button_callback)
 
-# Estilo da Entry
-NomeCompleto = Entry(frame, width=30, font="Poppins 10")
-NomeCompleto.grid(column=1, row=1, pady=5, sticky="ew", padx=5)
+# Aplicação de tema
+with dpg.theme() as theme:
+    with dpg.theme_component():
+        dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (1, 4, 18), category=dpg.mvThemeCat_Core)
+        dpg.add_theme_color(dpg.mvThemeCol_Text, (255, 247, 217), category=dpg.mvThemeCat_Core)
+        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 9)
 
-Produto = Entry(frame, width=30, font="Poppins 10")
-Produto.grid(column=1, row=2, pady=5, sticky="ew", padx=5)
+    with dpg.theme_component(dpg.mvThemeCol_FrameBg):
+        dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (241, 236, 202), category=dpg.mvThemeCat_Core)
 
-Seguradora = Entry(frame, width=30, font="Poppins 10")
-Seguradora.grid(column=1, row=3, pady=5, sticky="ew", padx=5)
+dpg.bind_theme(theme)
 
-Valor = Entry(frame, width=30, font="Poppins 10")
-Valor.grid(column=1, row=4, pady=5, sticky="ew", padx=5)
-
-Comissao = Entry(frame, width=30, font="Poppins 10")
-Comissao.grid(column=1, row=5, pady=5, sticky="ew", padx=5)
-
-ValorComissao = Entry(frame, width=30, font="Poppins 10")
-ValorComissao.grid(column=1, row=6, pady=5, sticky="ew", padx=5)
-
-ValorCredito = Entry(frame, width=30, font="Poppins 10")
-ValorCredito.grid(column=1, row=7, pady=5, sticky="ew", padx=5)
-
-DataCredito = Entry(frame, width=30, font="Poppins 10")
-DataCredito.grid(column=1, row=8, pady=5, sticky="ew", padx=5)
-
-VigenciaFinal = Entry(frame, width=30, font="Poppins 10")
-VigenciaFinal.grid(column=1, row=9, pady=5, sticky="ew", padx=5)
-
-botaocheck = Checkbutton(frame, text="Indicado?")
-botaocheck.grid(column=2, row=10, pady=5, sticky="ew", padx=5)
-
-Indicador = Entry(frame, width=30, font="Poppins 10")
-Indicador.grid(column=1, row=10, pady=5, sticky="ew", padx=5)
-
-# Botão para adicionar vendas
-botao_cadastrar = Button(frame, text="Cadastrar Venda", font="Poppins 10 bold", bg="#00796b", fg="white",
-                         relief="solid")
-botao_cadastrar.grid(column=0, row=12, columnspan=2, pady=20)
-
-
-
-
+# Configuração da janela principal
+dpg.create_viewport(title='Minhas Vendas', small_icon='icons/icon.ico', width=800, height=600, resizable=False)
+dpg.setup_dearpygui()
+dpg.show_viewport()
+dpg.set_primary_window("App", True)
+dpg.start_dearpygui()
+dpg.destroy_context()
