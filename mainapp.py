@@ -43,17 +43,6 @@ class XlsxPath(xlsx):
     def get_path():
         return xlsx.xlsx_state()
 
-# Função para formatar a data do date picker
-#def format_date(date_dict):
-#    day = date_dict['month_day']
-#    month = date_dict['month'] + 1
-#    year = date_dict['year']
-#
-#   if year < 1000: 
-#        year += 1900  
-#
-#    return f"{day:02d}/{month:02d}/{year}"
-
 # Função para calcular a comissão e atualizar o texto na interface
 def calculate_commission(sender, app_data, user_data):
     try:
@@ -63,6 +52,14 @@ def calculate_commission(sender, app_data, user_data):
         dpg.set_value("txtCommissionValue", f"Valor de Comissão ao Corretor: {cms_value:.2f}")
     except ValueError:
         dpg.set_value("txtCommissionValue", "Valor de Comissão ao Corretor: -")
+
+def show_indicator(sender, app_data, user_data):
+    indicated = dpg.get_value("input_btnIndicated")
+    
+    if indicated:
+        dpg.show_item("indicator_inputs")
+    else:
+        dpg.hide_item("indicator_inputs")
 
 # Função para criar as entradas de texto
 def text_inputs():
@@ -77,11 +74,13 @@ def text_inputs():
     dpg.add_input_text(label="Valor do Crédito", tag="input_txtCreditValue")
 
     dpg.add_input_text(label="Data do Crédito", tag="input_txtCreditDate")
-   
     dpg.add_input_text(label="Vigência Final", tag="input_txtEndDate")
-    dpg.add_checkbox(label="Indicado?", tag="input_txtIndicated")
-    dpg.add_input_text(label="Indicador", tag="input_txtIndicator")
+
+    dpg.add_checkbox(label="Indicado?", tag="input_btnIndicated", callback=show_indicator)
     
+    with dpg.group(tag="indicator_inputs", show=False):
+        dpg.add_input_text(label="Indicador", tag="input_txtIndicator")
+        dpg.add_input_text(label="Valor de Comissão ao Indicador", tag="input_txtIndicatorCommissionValue")
 
 # Função de callback do botão salvar
 def button_callback():
@@ -92,12 +91,12 @@ def button_callback():
     commission_pct = dpg.get_value("input_txtCommissionPct")
     cms_value = dpg.get_value("txtCommissionValue").split(": ")[-1]
     credit_value = dpg.get_value("input_txtCreditValue")
-    credit_date= dpg.get_value("input_txtCreditDate")
+    credit_date = dpg.get_value("input_txtCreditDate")
     end_date = dpg.get_value("input_txtEndDate")
 
-    indicated = dpg.get_value("input_txtIndicated") 
-    indicator = dpg.get_value("input_txtIndicator")
-    indicator_commission_value = dpg.get_value("input_txtIndicatorCommissionValue")
+    indicated = dpg.get_value("input_btnIndicated")
+    indicator = dpg.get_value("input_txtIndicator") if indicated else ""
+    indicator_commission_value = dpg.get_value("input_txtIndicatorCommissionValue") if indicated else ""
     
     fields = {
         "Nome Completo": name,
@@ -106,8 +105,8 @@ def button_callback():
         "Valor": InsValue,
         "(%) Comissão": commission_pct,
         "Valor do Crédito": credit_value,
-        "Data do Crédito": [credit_date],
-        "Vigência Final": [end_date],
+        "Data do Crédito": credit_date,
+        "Vigência Final": end_date,
     }
 
     empty_fields = [key for key, value in fields.items() if not value]
@@ -156,7 +155,7 @@ def button_callback():
 # Configuração da interface
 with dpg.window(tag="App"):
     xlsx.xlsx_state()
-    dpg.add_text('Bem vindo ao Cadastro de Vendas, Corretor.')
+    dpg.add_text('Bem-vindo ao Cadastro de Vendas, Corretor.')
     text_inputs()
     dpg.add_button(label="Salvar", callback=button_callback)
 
