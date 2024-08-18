@@ -44,15 +44,15 @@ class XlsxPath(xlsx):
         return xlsx.xlsx_state()
 
 # Função para formatar a data do date picker
-def format_date(date_dict):
-    day = date_dict['month_day']
-    month = date_dict['month'] + 1
-    year = date_dict['year']
-
-    if year < 1000: 
-        year += 1900  
-
-    return f"{day:02d}/{month:02d}/{year}"
+#def format_date(date_dict):
+#    day = date_dict['month_day']
+#    month = date_dict['month'] + 1
+#    year = date_dict['year']
+#
+#   if year < 1000: 
+#        year += 1900  
+#
+#    return f"{day:02d}/{month:02d}/{year}"
 
 # Função para calcular a comissão e atualizar o texto na interface
 def calculate_commission(sender, app_data, user_data):
@@ -75,13 +75,13 @@ def text_inputs():
 
     dpg.add_text("", tag="txtCommissionValue")
     dpg.add_input_text(label="Valor do Crédito", tag="input_txtCreditValue")
-    dpg.add_text("Data do Crédito")
-    dpg.add_date_picker(label="Data do Crédito", tag="input_txtCreditDate")
-    dpg.add_text("Vigência Final")
-    dpg.add_date_picker(label="Vigência Final", tag="input_txtEndDate")
+
+    dpg.add_input_text(label="Data do Crédito", tag="input_txtCreditDate")
+   
+    dpg.add_input_text(label="Vigência Final", tag="input_txtEndDate")
     dpg.add_checkbox(label="Indicado?", tag="input_txtIndicated")
     dpg.add_input_text(label="Indicador", tag="input_txtIndicator")
-    #dpg.add_text(f"Valor de Comissão do Indicador: ", tag="input_txtIndicatorCommissionValue")
+    
 
 # Função de callback do botão salvar
 def button_callback():
@@ -92,10 +92,9 @@ def button_callback():
     commission_pct = dpg.get_value("input_txtCommissionPct")
     cms_value = dpg.get_value("txtCommissionValue").split(": ")[-1]
     credit_value = dpg.get_value("input_txtCreditValue")
-    credit_date_dict = dpg.get_value("input_txtCreditDate")
-    end_date_dict = dpg.get_value("input_txtEndDate")
-    credit_date = format_date(credit_date_dict)
-    end_date = format_date(end_date_dict)
+    credit_date= dpg.get_value("input_txtCreditDate")
+    end_date = dpg.get_value("input_txtEndDate")
+
     indicated = dpg.get_value("input_txtIndicated") 
     indicator = dpg.get_value("input_txtIndicator")
     indicator_commission_value = dpg.get_value("input_txtIndicatorCommissionValue")
@@ -107,13 +106,15 @@ def button_callback():
         "Valor": InsValue,
         "(%) Comissão": commission_pct,
         "Valor do Crédito": credit_value,
+        "Data do Crédito": [credit_date],
+        "Vigência Final": [end_date],
     }
 
     empty_fields = [key for key, value in fields.items() if not value]
 
     if empty_fields:
         empty_fields_str = ", \n".join(empty_fields)
-        with dpg.window(label="Aviso", pos=(200, 100), no_close=False, popup=True, horizontal_scrollbar=True, max_size=[300,200]):
+        with dpg.window(label="Aviso", pos=(200, 100), no_close=False, popup=True, horizontal_scrollbar=True, max_size=[400,300]):
             dpg.add_text(f"Os seguintes campos estão vazios: \n{empty_fields_str}")
         return
 
