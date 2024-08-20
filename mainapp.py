@@ -1,6 +1,12 @@
 import dearpygui.dearpygui as dpg
 import pandas as pd
 import os
+from datetime import datetime
+
+#criar drop list de seguradoras
+#melhorar o visual
+#adicionar verificação de data
+#criar pesquisa por nome e exclusão de venda
 
 dpg.create_context()
 
@@ -38,6 +44,45 @@ class xlsx:
 
         return path
 
+class refactor:
+    def date_validation(date):
+        try:
+            datetime.strptime(date, '%d/%m/%Y')
+            return True
+        except ValueError:
+            return False
+
+    def credit_date_refactor():
+        date_text_credit = dpg.get_value("input_txtCreditDate")
+        if len(date_text_credit) < 10 and len(date_text_credit) > 4:
+            day_credit = date_text_credit[:2]
+            month_credit = date_text_credit[2:4]
+            year_credit = date_text_credit[4:]
+            credit_date = (f'{day_credit}/{month_credit}/{year_credit}')
+            validate = refactor.date_validation(credit_date)
+
+            if validate: 
+              dpg.set_value("input_txtCreditDate", f'{credit_date}')   
+            else:
+              dpg.set_value("input_txtCreditDate", "Insira DD/MM/AAAA")
+                
+
+    def end_date_refactor():
+        date_text_end = dpg.get_value("input_txtEndDate")
+        if len(date_text_end) < 10 and len(date_text_end) > 4:
+            day_end = date_text_end[:2]
+            month_end = date_text_end[2:4]
+            year_end = date_text_end[4:]
+            end_date = (f'{day_end}/{month_end}/{year_end}')
+
+            dpg.set_value("input_txtEndDate", f'{end_date}')
+            validate = refactor.date_validation(end_date)
+
+            if validate: 
+                dpg.set_value("input_txtEndDate", f'{end_date}')  
+            else:
+               dpg.set_value("input_txtEndDate", "Insira DD/MM/AAAA")
+                
 # Classe para obter o caminho do arquivo .xlsx
 class XlsxPath(xlsx):
     def get_path():
@@ -70,11 +115,11 @@ def text_inputs():
     dpg.add_input_text(label="Valor", tag="input_txtInsValue", callback=calculate_commission)
     dpg.add_input_text(label="(%) Comissão", tag="input_txtCommissionPct", callback=calculate_commission)
 
-    dpg.add_text("", tag="txtCommissionValue")
+    dpg.add_text("", tag="txtCommissionValue", color=(102, 204, 153))
     dpg.add_input_text(label="Valor do Crédito", tag="input_txtCreditValue")
 
-    dpg.add_input_text(label="Data do Crédito", tag="input_txtCreditDate")
-    dpg.add_input_text(label="Vigência Final", tag="input_txtEndDate")
+    dpg.add_input_text(label="Data do Crédito", tag="input_txtCreditDate", callback=refactor.credit_date_refactor)
+    dpg.add_input_text(label="Data de Vigência Final", tag="input_txtEndDate", callback=refactor.end_date_refactor)
 
     dpg.add_checkbox(label="Indicado?", tag="input_btnIndicated", callback=show_indicator)
     
@@ -159,7 +204,7 @@ with dpg.window(tag="App"):
     text_inputs()
     dpg.add_button(label="Salvar", callback=button_callback)
 
-# Aplicação de tema
+
 with dpg.theme() as theme:
     with dpg.theme_component():
         dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (1, 4, 18), category=dpg.mvThemeCat_Core)
@@ -171,10 +216,10 @@ with dpg.theme() as theme:
 
 dpg.bind_theme(theme)
 
-# Configuração da janela principal
-dpg.create_viewport(title='Minhas Vendas', small_icon='icons/icon.ico', width=800, height=600, resizable=False)
+dpg.create_viewport(title='Minhas Vendas', small_icon='icons/icon.ico', width=500, height=600, resizable=False)
 dpg.setup_dearpygui()
 dpg.show_viewport()
 dpg.set_primary_window("App", True)
+dpg.show_style_editor()
 dpg.start_dearpygui()
 dpg.destroy_context()
