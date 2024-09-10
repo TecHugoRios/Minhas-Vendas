@@ -10,6 +10,10 @@ from datetime import datetime
 
 dpg.create_context()
 
+# Constantes para largura e altura da janela
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 550
+
 # Classe para verificar o estado do arquivo .xlsx
 class xlsx:
     def xlsx_state(self):
@@ -226,7 +230,7 @@ def button_callback():
 
 
 # Configuração da interface
-with dpg.window(tag="App", pos=[0, 0], autosize=True, no_resize=True, no_background=True, no_collapse=True,
+with dpg.window(tag="App", pos=[0, 0], width=WINDOW_WIDTH, height=WINDOW_HEIGHT, no_resize=True, no_background=True, no_collapse=True,
                 no_close=True, no_move=True, no_focus_on_appearing=True):
     with dpg.viewport_menu_bar():
         with dpg.menu(label="File"):
@@ -253,7 +257,7 @@ with dpg.theme() as theme:
 
 dpg.bind_theme(theme)
 
-dpg.create_viewport(title='Minhas Vendas', small_icon='icons/icon.ico')
+dpg.create_viewport(title='Minhas Vendas', small_icon='icons/icon.ico',width=WINDOW_WIDTH, height=WINDOW_HEIGHT)
 dpg.setup_dearpygui()
 dpg.show_viewport(minimized=True)
 dpg.set_primary_window("App", False)
