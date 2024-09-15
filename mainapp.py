@@ -1,6 +1,7 @@
 import dearpygui.dearpygui as dpg
 import pandas as pd
 import os
+import re
 from datetime import datetime
 
 
@@ -11,8 +12,8 @@ from datetime import datetime
 dpg.create_context()
 
 # Constantes para largura e altura da janela
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 550
+WINDOW_WIDTH = 650
+WINDOW_HEIGHT = 880
 
 # Classe para verificar o estado do arquivo .xlsx
 class xlsx:
@@ -28,6 +29,9 @@ class xlsx:
             dados = {
                 'Nome Completo': [],
                 'Produto': [],
+                'Placa':[],
+                'Observação':[],
+                'Categoria':[],
                 'Seguradora': [],
                 'Valor': [],
                 '(%) Comissão': [],
@@ -87,6 +91,19 @@ class refactor:
             else:
                 dpg.set_value("input_txtEndDate", "Insira DD/MM/AAAA")
 
+    def plate_refactor(placa):
+        plate_input = re.sub(r'[^A-Za-z0-9]', '', placa)
+
+        if len(plate_input) != 7:
+            dpg.set_value("input_txtPlate", "A Placa deve conter exatamente 7 caracteres alfanuméricos.")
+            return
+
+        try:
+            placa_formatada = f"{plate_input[0:3]}{plate_input[3]}{plate_input[4]}{plate_input[5:7]}"
+            dpg.set_value("input_txtPlate", placa_formatada.upper())
+        except IndexError:
+            dpg.set_value("input_txtPlate", "Formato de placa inválido.")
+
 
 # Classe para obter o caminho do arquivo .xlsx
 class XlsxPath(xlsx):
@@ -100,7 +117,7 @@ def calculate_commission(sender, app_data, user_data):
         InsValue = float(dpg.get_value("input_txtInsValue"))
         commission_pct = float(dpg.get_value("input_txtCommissionPct"))
         cms_value = float((InsValue * commission_pct) / 100)
-        dpg.set_value("txtCommissionValue", f"Valor de Comissão ao Corretor: {cms_value:.2f}")
+        dpg.set_value("txtCommissionValue", f"Valor de Comissão ao Corretor: R$ {cms_value:.2f}")
     except ValueError:
         dpg.set_value("txtCommissionValue", "Valor de Comissão ao Corretor: -")
 
@@ -117,64 +134,129 @@ def show_indicator(sender, app_data, user_data):
 def name_verification():
     xlsx_path = XlsxPath.get_path(self=XlsxPath)
     name_ver = dpg.get_value("input_txtName")
+    plate_ver = dpg.get_value("input_txtPlate")
 
     if os.path.exists(xlsx_path):
         existing_df = pd.read_excel(xlsx_path)
-        if any(existing_df['Nome Completo'] == name_ver):
+        if any((existing_df['Nome Completo'] == name_ver)):
             dpg.set_value("input_txtName", 'Nome já existente')
+#
+def plate_verification():
+    xlsx_path = XlsxPath.get_path(self=XlsxPath)
+    plate_ver = dpg.get_value("input_txtPlate")
+
+    if os.path.exists(xlsx_path):
+        existing_df = pd.read_excel(xlsx_path)
+        if any((existing_df['Placa'] == plate_ver)):
+            dpg.set_value("input_txtPlate", 'Placa já existente')
+
+def combined_callback_plate(sender, app_data):
+    plate_input = dpg.get_value("input_txtPlate")
+    refactor.plate_refactor(plate_input)
+    plate_verification()
+
+
 
 
 # Função para criar as entradas de texto
 def text_inputs():
-    dpg.add_text("Nome Completo:")
-    dpg.add_input_text(tag="input_txtName", callback=name_verification)
-    dpg.add_text("Produto:")
-    dpg.add_input_text(tag="input_txtProduct")
-    dpg.add_text("Seguradora:")
-    dpg.add_listbox(items=['','Tokio', 'Yelum', 'Bradesco','Allianz', 'Azul', 'HDI', 'Mapfre', 'Mitsui', 'Porto Seguro', 'Sompo', 'Suhai'],tag='input_txtInsCompany')
+    input_name = dpg.add_text("Nome Completo:")
+    input_txtName = dpg.add_input_text(tag="input_txtName", callback=name_verification, width=-1)
 
-    dpg.add_text("Valor:")
-    dpg.add_input_int(label="Valor", tag="input_txtInsValue", callback=calculate_commission)
-    dpg.add_input_int(label="(%) Comissão", tag="input_txtCommissionPct", callback=calculate_commission)
+    input_product = dpg.add_text("Produto:")
+    input_txtProduct = dpg.add_input_text(tag="input_txtProduct", width=-1)
 
-    dpg.add_text("", tag="txtCommissionValue", color=(102, 204, 153))
-    dpg.add_input_int(label="Valor do Crédito", tag="input_txtCreditValue")
+    input_plate = dpg.add_text("Placa:")
+    input_txtPlate = dpg.add_input_text(tag="input_txtPlate", width=-1,callback=combined_callback_plate)
 
-    dpg.add_input_text(label="Data do Crédito", tag="input_txtCreditDate", callback=refactor.credit_date_refactor)
-    dpg.add_input_text(label="Data de Vigência Final", tag="input_txtEndDate", callback=refactor.end_date_refactor)
+    input_obs = dpg.add_text("Observação:")
+    input_txtObs = dpg.add_input_text(tag="input_txtObs", width=-1)
 
-    dpg.add_checkbox(label="Indicado?", tag="input_btnIndicated", callback=show_indicator)
+    input_category = dpg.add_text("Categoria:")
+    input_txtCategory = dpg.add_listbox(
+        items=['', 'Carro', 'Moto', 'Caminhão', 'Frota', 'Plano De Saúde', 'Consórcio', 'Celular', 'Embarcação'],
+        tag='input_txtCategory', width=-1)
+
+    input_insCompany = dpg.add_text("Seguradora:")
+    input_txtInsCompany = dpg.add_listbox(
+        items=['', 'Tokio', 'Yelum', 'Bradesco', 'Allianz', 'Azul', 'HDI', 'Mapfre', 'Mitsui', 'Porto Seguro', 'Sompo',
+               'Suhai'], tag='input_txtInsCompany', width=-1)
+
+    input_insValue = dpg.add_text("Valor:")
+    input_txtInsValue = dpg.add_input_int(tag="input_txtInsValue", callback=calculate_commission, width=-1)
+
+    input_commissionPct = dpg.add_text("(%) Comissão")
+    input_txtCommissionPct = dpg.add_input_int(tag="input_txtCommissionPct", callback=calculate_commission, width=-1)
+
+    txtCommissionValue = dpg.add_text("", tag="txtCommissionValue", color=(102, 204, 153))
+
+    input_creditValue = dpg.add_text("Valor do Crédito:")
+    input_txtCreditValue = dpg.add_input_int(tag="input_txtCreditValue", width=-1)
+
+    input_creditDate = dpg.add_text("Data do Crédito:")
+    input_txtCreditDate = dpg.add_input_text(tag="input_txtCreditDate", callback=refactor.credit_date_refactor, width=-1)
+
+    input_endDate = dpg.add_text("Data de Vigência Final:")
+    input_txtEndDate = dpg.add_input_text(tag="input_txtEndDate", callback=refactor.end_date_refactor, width=-1)
+
+    input_btnIndicated = dpg.add_checkbox(label="Indicado?", tag="input_btnIndicated", callback=show_indicator)
 
     with dpg.group(tag="indicator_inputs", show=False):
-        dpg.add_input_text(label="Indicador", tag="input_txtIndicator")
-        dpg.add_input_text(label="Valor de Comissão ao Indicador", tag="input_txtIndicatorCommissionValue")
+        input_indicator = dpg.add_text("Indicador:")
+        input_txtIndicator = dpg.add_input_text(tag="input_txtIndicator", width=-1)
+
+        input_indicatorCommissionValue = dpg.add_text("Valor de Comissão ao Indicador:")
+        input_txtIndicatorCommissionValue = dpg.add_input_text(tag="input_txtIndicatorCommissionValue", width=-1)
+
+    text_fields = [
+        input_name,
+        input_product,
+        input_plate,
+        input_obs,
+        input_category,
+        input_insCompany,
+        input_insValue,
+        input_commissionPct,
+        txtCommissionValue,
+        input_creditValue,
+        input_creditDate,
+        input_endDate,
+        input_indicator,
+        input_indicatorCommissionValue
+    ]
+
+    return text_fields
 
 
-def fiels_verification(fields):
+def fields_verification(fields):
     fields_names = {
         "Nome Completo": fields[0],
         "Produto": fields[1],
-        "Seguradora": fields[2],
-        "Valor": fields[3],
-        "(%) Comissão": fields[4],
-        "Valor do Crédito": fields[5],
-        "Data do Crédito": fields[6],
-        "Vigência Final": fields[7]
+        "Categoria":fields[2],
+        "Seguradora": fields[3],
+        "Valor": fields[4],
+        "(%) Comissão": fields[5],
+        "Valor do Crédito": fields[6],
+        "Data do Crédito": fields[7],
+        "Vigência Final": fields[8]
     }
 
-    empty_fields = [key for key, value in fields_names.items() if not value]
+    empty_fields = [key for key, value in fields_names.items() if value in [None, "", 0]]
 
     if empty_fields:
         empty_fields_string = ", \n".join(empty_fields)
-        with dpg.window(label="Aviso", pos=(200, 100), no_close=False, popup=True, horizontal_scrollbar=True,
+        with dpg.window(label="Aviso", pos=(100, 100), no_close=False, popup=True, horizontal_scrollbar=True,
                         max_size=[400, 300]):
             dpg.add_text(f"Os seguintes campos estão vazios: \n{empty_fields_string}")
-        return
-
+        return False
+    return True
 # Função de callback do botão salvar
 def button_callback():
     name = dpg.get_value("input_txtName")
     product = dpg.get_value("input_txtProduct")
+    plate = dpg.get_value("input_txtPlate")
+    obs = dpg.get_value("input_txtObs")
+    category = dpg.get_value("input_txtCategory")
     InsCompany = dpg.get_value("input_txtInsCompany")
     InsValue = float(dpg.get_value("input_txtInsValue"))
     commission_pct = float(dpg.get_value("input_txtCommissionPct"))
@@ -186,81 +268,85 @@ def button_callback():
     indicator = dpg.get_value("input_txtIndicator") if indicated else ""
     indicator_commission_value = dpg.get_value("input_txtIndicatorCommissionValue") if indicated else ""
 
-    fields = [name, product, InsCompany, InsValue, commission_pct, cms_value, credit_value, credit_date, end_date, indicated, indicator, indicator_commission_value]
+    fields = [name, product, category,InsCompany, InsValue, commission_pct, cms_value, credit_value, credit_date, end_date, indicated, indicator, indicator_commission_value]
 
-    fiels_verification(fields)
+    if fields_verification(fields):
 
-    data_dictionary = {
-        'Nome Completo': [name],
-        'Produto': [product],
-        'Seguradora': [InsCompany],
-        'Valor': [InsValue],
-        '(%) Comissão': [commission_pct],
-        'Valor de Comissão': [cms_value],
-        'Valor do Crédito': [credit_value],
-        'Data do Crédito': [credit_date],
-        'Vigência Final': [end_date],
-        'Indicado': [indicated],
-        'Indicador': [indicator],
-        'Valor de Comissão do Indicador': [indicator_commission_value]
-    }
+        data_dictionary = {
+            'Nome Completo': [name],
+            'Produto': [product],
+            'Placa':[plate],
+            'Observação': [obs],
+            'Categoria': [category],
+            'Seguradora': [InsCompany],
+            'Valor': [InsValue],
+            '(%) Comissão': [commission_pct],
+            'Valor de Comissão': [cms_value],
+            'Valor do Crédito': [credit_value],
+            'Data do Crédito': [credit_date],
+            'Vigência Final': [end_date],
+            'Indicado': [indicated],
+            'Indicador': [indicator],
+            'Valor de Comissão do Indicador': [indicator_commission_value]
+        }
 
-    chart = pd.DataFrame(data_dictionary)
-    xlsx_path = XlsxPath.get_path(self=XlsxPath)
+        chart = pd.DataFrame(data_dictionary)
+        xlsx_path = XlsxPath.get_path(self=XlsxPath)
 
-    if os.path.exists(xlsx_path):
-        existing_df = pd.read_excel(xlsx_path)
+        if os.path.exists(xlsx_path):
+            existing_df = pd.read_excel(xlsx_path)
 
-        if any((existing_df['Nome Completo'] == name) & (existing_df['Produto'] == product) & (existing_df['Data do Crédito'] == credit_date) & (existing_df['Vigência Final'] == end_date)):
-            with dpg.window(label="Aviso", pos=(200, 100), no_close=False, popup=True, horizontal_scrollbar=True,
-                            autosize=True, max_size=[300, 50]):
-                dpg.add_text("Venda já cadastrada")
-            return
+            if any((existing_df['Placa'] == plate) & (existing_df['Produto'] == product)):
+                with dpg.window(label="Aviso", pos=(200, 100), no_close=False, popup=True, horizontal_scrollbar=True,
+                                autosize=True, max_size=[300, 50]):
+                    dpg.add_text("Venda já cadastrada")
+                return
+            else:
+                updated_df = pd.concat([existing_df, chart], ignore_index=True)
+
         else:
-            updated_df = pd.concat([existing_df, chart], ignore_index=True)
+            updated_df = chart
 
-    else:
-        updated_df = chart
+        updated_df.to_excel(xlsx_path, index=False)
 
-    updated_df.to_excel(xlsx_path, index=False)
-
-    with dpg.window(label="Mensagem", pos=(50, 200), no_close=False):
-        dpg.add_text(f'Cliente "{name}" cadastrado com sucesso!')
-        dpg.add_text(f"Dados salvos com sucesso em {xlsx_path}")
+        with dpg.window(label="Mensagem", pos=(200, 100), no_close=False):
+            dpg.add_text(f'Cliente "{name}" cadastrado com sucesso!')
+            dpg.add_text(f"Dados salvos com sucesso em: \n{xlsx_path}")
 
 
 # Configuração da interface
-with dpg.window(tag="App", pos=[0, 0], width=WINDOW_WIDTH, height=WINDOW_HEIGHT, no_resize=True, no_background=True, no_collapse=True,
+with dpg.window(tag="App", pos=[0, 0], width=WINDOW_WIDTH, height=WINDOW_HEIGHT, no_resize=True, no_collapse=True,
                 no_close=True, no_move=True, no_focus_on_appearing=True):
-    with dpg.viewport_menu_bar():
-        with dpg.menu(label="File"):
-            dpg.add_menu_item(label="Save")
-            dpg.add_menu_item(label="Save As")
 
-            with dpg.menu(label="Settings"):
-                dpg.add_menu_item(label="Setting 1", check=True)
-                dpg.add_menu_item(label="Setting 2")
+       xlsx.xlsx_state(self=xlsx)
+       top_msg = dpg.add_text('Bem-vindo ao Cadastro de Vendas, Corretor.', color=(255, 189, 89))
 
-    xlsx.xlsx_state(self=xlsx)
-    dpg.add_text('Bem-vindo ao Cadastro de Vendas, Corretor.')
-    text_inputs()
-    dpg.add_button(label="Salvar", callback=button_callback)
+
+       text_fields= text_inputs()
+
+
+
+       save_button = dpg.add_button(label="Salvar", callback=button_callback)
+
+       baseboard_text = dpg.add_text('Minhas Vendas\nVersão 1.0', pos=[340, 800], color=(255, 189, 89))
+
 
 with dpg.theme() as theme:
-    with dpg.theme_component():
-        dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (1, 4, 18), category=dpg.mvThemeCat_Core)
-        dpg.add_theme_color(dpg.mvThemeCol_Text, (255, 247, 217), category=dpg.mvThemeCat_Core)
-        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 9)
+   with dpg.theme_component():
+       dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (14, 37, 46))
+       dpg.add_theme_color(dpg.mvThemeCol_Text, (255, 228, 188))
+       dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 4)
+       dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (23, 57, 71))
 
-    with dpg.theme_component(dpg.mvThemeCol_FrameBg):
-        dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (241, 236, 202), category=dpg.mvThemeCat_Core)
+
+   with dpg.theme_component(dpg.mvThemeCol_FrameBg):
+       dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (241, 236, 202), category=dpg.mvThemeCat_Core)
 
 dpg.bind_theme(theme)
 
-dpg.create_viewport(title='Minhas Vendas', small_icon='icons/icon.ico',width=WINDOW_WIDTH, height=WINDOW_HEIGHT)
+dpg.create_viewport(title='Minhas Vendas', small_icon='icons/icon.ico',width=460, height=WINDOW_HEIGHT, resizable=False)
 dpg.setup_dearpygui()
 dpg.show_viewport(minimized=True)
-dpg.set_primary_window("App", False)
-#dpg.show_style_editor()
+dpg.set_primary_window("App", True)
 dpg.start_dearpygui()
 dpg.destroy_context()
